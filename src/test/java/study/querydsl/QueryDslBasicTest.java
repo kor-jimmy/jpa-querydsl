@@ -1,5 +1,6 @@
 package study.querydsl;
 
+import com.querydsl.core.QueryResults;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,9 +48,9 @@ public class QueryDslBasicTest {
 
     /**
      * QueryDSL은 자바 컴파일러의 도움을 받을 수 있기 때문에, 컴파일 시점에서 오류를 확인 할 수 있음
-     * */
+     */
     @Test
-    public void startQueryDsl() throws Exception{
+    public void startQueryDsl() throws Exception {
         Member findMember = queryFactory
                 .select(member)
                 .from(member)
@@ -59,13 +60,49 @@ public class QueryDslBasicTest {
     }
 
     @Test
-    public void search() throws Exception{
+    public void search() throws Exception {
         Member findMember = queryFactory
                 .selectFrom(member)
                 .where(member.username.eq("member1")
                         .and(member.age.eq(10)))
                 .fetchOne();
         assertThat(findMember.getUsername()).isEqualTo("member1");
+    }
+
+    @Test
+    public void searchAndParam() throws Exception {
+        Member findMember = queryFactory
+                .selectFrom(member)
+                .where(
+                        member.username.eq("member1"),
+                        member.age.eq(10))
+                .fetchOne();
+        assertThat(findMember.getUsername()).isEqualTo("member1");
+    }
+
+    @Test
+    public void resultFetch() throws Exception{
+        List<Member> fetch = queryFactory
+                .selectFrom(member)
+                .fetch();
+
+        Member fetchOne = queryFactory
+                .selectFrom(member)
+                .fetchOne();
+
+        Member fetchFirst = queryFactory
+                .selectFrom(member)
+                .fetchFirst();
+
+        QueryResults<Member> result = queryFactory
+                .selectFrom(member)
+                .fetchResults();
+        result.getTotal();
+        List<Member> content = result.getResults();
+
+        long total = queryFactory
+                .selectFrom(member)
+                .fetchCount();
     }
 
 }
