@@ -1,6 +1,7 @@
 package study.querydsl;
 
 import com.querydsl.core.QueryResults;
+import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,13 +11,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
+import study.querydsl.entity.QTeam;
 import study.querydsl.entity.Team;
 
 import javax.persistence.EntityManager;
+import java.lang.reflect.Type;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static study.querydsl.entity.QMember.*;
+import static study.querydsl.entity.QTeam.team;
 
 @SpringBootTest
 @Transactional
@@ -81,7 +85,7 @@ public class QueryDslBasicTest {
     }
 
     @Test
-    public void resultFetch() throws Exception{
+    public void resultFetch() throws Exception {
         List<Member> fetch = queryFactory
                 .selectFrom(member)
                 .fetch();
@@ -109,9 +113,9 @@ public class QueryDslBasicTest {
      * 1. 회원 나이 내림차순
      * 2. 회원 이름 올림차순
      * 단 2에서 회원 이름이 없으면 마지막에 출력(nulls last)
-     * */
+     */
     @Test
-    public void sort() throws Exception{
+    public void sort() throws Exception {
         em.persist(new Member(null, 100));
         em.persist(new Member("member5", 100));
         em.persist(new Member("member6", 100));
@@ -132,7 +136,7 @@ public class QueryDslBasicTest {
     }
 
     @Test
-    public void paging1() throws Exception{
+    public void paging1() throws Exception {
         List<Member> result = queryFactory
                 .selectFrom(member)
                 .orderBy(member.username.desc())
@@ -144,7 +148,7 @@ public class QueryDslBasicTest {
     }
 
     @Test
-    public void pagingTotal() throws Exception{
+    public void pagingTotal() throws Exception {
         QueryResults<Member> queryResults = queryFactory
                 .selectFrom(member)
                 .orderBy(member.username.desc())
@@ -157,6 +161,44 @@ public class QueryDslBasicTest {
         assertThat(queryResults.getOffset()).isEqualTo(1);
         assertThat(queryResults.getResults().size()).isEqualTo(2);
 
+    }
+
+    @Test
+    public void aggregation() throws Exception {
+        List<Tuple> result = queryFactory.select(
+                        member.count(),
+                        member.age.sum(),
+                        member.age.avg(),
+                        member.age.max(),
+                        member.age.min()
+                )
+                .from(member)
+                .fetch();
+        Tuple tuple = result.get(0);
+        assertThat(tuple.get(member.count())).isEqualTo(4);
+        assertThat(tuple.get(member.age.sum())).isEqualTo(100);
+        assertThat(tuple.get(member.age.avg())).isEqualTo(25);
+        assertThat(tuple.get(member.age.max())).isEqualTo(40);
+        assertThat(tuple.get(member.age.min())).isEqualTo(10);
+    }
+
+    /**
+     * 팀의 이름과 각 팀의 평균 연령 구해보기
+     */
+    @Test
+    public void groupBy() throws Exception{
+        List<Tuple> result = queryFactory.select(team.name, member.age.avg())
+                .from(member)
+                .join(member.team, team)
+                .groupBy(team.name)
+                .fetch();
+        Tuple teamA = result.get(0);
+        Tuple teamB = result.get(1);
+        assertThat(teamA.get(team.name)).isEqualTo("teamA");
+        assertThat(teamA.get(member.age.avg())).isEqualTo(15);
+
+        assertThat(teamA.get(team.name)).isEqualTo("teamB");
+        assertThat(teamA.get(member.age.avg())).isEqualTo(35);
     }
 
 }
